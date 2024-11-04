@@ -1,44 +1,131 @@
 use std::str::FromStr;
+use std::time::Duration;
 use std::vec;
 
+use figlet_rs::FIGfont;
 pub use image::ImageReader;
 pub use image::imageops;
 use pnet::packet::icmpv6::MutableIcmpv6Packet;
 use pnet::packet::util;
 use pnet::packet::Packet;
 
+
 fn main() {
     // read arguments
     let args: Vec<String> = std::env::args().collect();
     // args are image_path, position, scale, part of ipv6
-    if args.len() != 7 {
-        println!("Usage: {} <image_path> <x> <y> <scaleX> <scaleY> <part of ipv6>", args[0]);
+    if args.len() != 2 {
+        println!("Usage: {} <wait time>", args[0]);
         return;
     }
 
+    // Welcome message
+    let standard_font = FIGfont::standard().unwrap();
+    let figure = standard_font.convert("ChaChiPrint");
+    println!("{}", figure.unwrap());
+
+
+    
+    let mut ipv6s = match build_ipv6() {
+        Some(value) => value,
+        None => return,
+    };
+
+    // calculate bandwidth for 1 run each packet is 16 bytes
+    let mut txv6 = create_tx();
+
+    let wait_time: f64 = args[1].parse::<f64>().unwrap();
+
+    let seconds = Duration::from_secs(60);
+    let mut start = std::time::Instant::now();
+    let mut counter: u64 = 0;
+    println!("Starting to print image");
+    loop {
+        if start.elapsed() > seconds {
+            println!("Sent {} packets", counter);
+            println!("Refreshing image");
+            ipv6s = match build_ipv6() {
+                Some(value) => value,
+                None => return,
+            };
+
+            start = std::time::Instant::now();
+        }
+        
+        print_image(&ipv6s, &mut txv6);
+
+        counter += ipv6s.len() as u64;
+        
+        std::thread::sleep(std::time::Duration::from_secs_f64(wait_time));
+    }
+
+
+    
+
+}
+
+fn build_ipv6() -> Option<Vec<String>> {
     // read image
-    let image_path = &args[1];
-    let img = image::open(image_path).unwrap().to_rgba8();
-    // resize image
-    let scale_x = args[4].parse::<u32>().unwrap();
-    let scale_y = args[5].parse::<u32>().unwrap();
-    let img = imageops::resize(&img, scale_x, scale_y, image::imageops::FilterType::Nearest);
+    // let image_path = &args[1];
+    // let img = image::open(image_path).unwrap().to_rgba8();
+    // read image from server
+    let img ;
 
-    // read position
-    let x = args[2].parse::<u32>().unwrap();
-    let y = args[3].parse::<u32>().unwrap();
-
-    let max_x: u32 = 1920;
-    let max_y: u32 = 1080;
-
-    if x + img.width() > max_x || y + img.height() > max_y {
-        println!("Image is too big for the screen current size is {}x{} and image size is {}x{}", max_x, max_y, img.width(), img.height());
-        return;
+    match reqwest::blocking::get("http://tepoel.net:8081/sntpings/image") {
+        Ok(response) => {
+            let img_bytes = response.bytes().unwrap();
+            img = Some(image::load_from_memory(&img_bytes).unwrap());
+        },
+        Err(_) => {
+            println!("Error getting image from server");
+            return None;
+        }
+    
     }
 
+    let scale_x: u64;
+    let scale_y: u64;
 
-    // create pixel array B G R A
-    // let mut pixelsArray: Vec<Vec<u8>> = vec![vec![0; img.width() as usize] ; img.height() as usize];
+    match reqwest::blocking::get("http://tepoel.net:8081/sntpings/size") {
+        Ok(response) => {
+            let json = response.json::<serde_json::Value>().unwrap();
+            scale_x = json["x"].as_u64().unwrap();
+            scale_y = json["y"].as_u64().unwrap();
+        
+        },
+        Err(_) => {
+            println!("Error getting image size from server");
+            return None;
+        }
+    
+    }
+
+    let img = imageops::resize(&img.unwrap(), scale_x as u32, scale_y as u32, image::imageops::FilterType::Nearest);
+    let x: u64;
+    let y: u64;
+
+    match reqwest::blocking::get("http://tepoel.net:8081/sntpings/location") {
+        Ok(response) => {
+            let json = response.json::<serde_json::Value>().unwrap();
+            x = json["x"].as_u64().unwrap();
+            y = json["y"].as_u64().unwrap();
+        
+        },
+        Err(_) => {
+            println!("Error getting image position from server");
+            return None;
+        }
+    
+    }
+
+    let max_x: u64 = 1920;
+    let max_y: u64 = 1080;
+
+    if x + img.width() as u64 > max_x || y + img.height() as u64 > max_y {
+        println!("Image is too big for the screen current size is {}x{} and image size is {}x{}", max_x, max_y, img.width(), img.height());
+        return None;
+    }
+
     let mut pixels_array: Vec<Vec<[u8; 4]>> = vec![vec![[0; 4]; img.width() as usize] ; img.height() as usize];
 
     for i in 0..img.height() {
@@ -49,11 +136,25 @@ fn main() {
         }
     }
 
-    // create ipv6 addresses 
-    // 2001:610:1908:a000:<X>:<Y>:<BLUE><GREEN>:<RED><ALPHA>
-    let ipv6 = args[6].clone();
-    let mut ipv6s: Vec<String> = Vec::new();
+    let mut ipv6 ;
 
+    match reqwest::blocking::get("http://tepoel.net:8081/sntpings/ip") {
+        Ok(response) => {
+            let json = response.json::<serde_json::Value>().unwrap();
+            ipv6 = Some(json["ip"].as_str().unwrap().to_string());
+            ipv6 = Some(ipv6.unwrap().replace("\"", ""));
+        
+        },
+        Err(_) => {
+            println!("Error getting ipv6 prefix from server");
+            return None;
+        }
+    
+    }
+
+    let mut ipv6s: Vec<String> = Vec::new();
+    let ipv6string = ipv6.unwrap();
+    
     for i in 0..img.height() {
         for j in 0..img.width() {
             let pixel = pixels_array[i as usize][j as usize];
@@ -61,47 +162,17 @@ fn main() {
             let green = pixel[1];
             let red = pixel[0];
             let alpha = pixel[3];
-            
-            let ipv6 = format!("{}:{:04x}:{:04x}:{:02x}{:02x}:{:02x}{:02x}", ipv6, x + j, y + i, blue, green, red, alpha);
+        
+            let ipv6 = format!("{}:{:04x}:{:04x}:{:02x}{:02x}:{:02x}{:02x}", ipv6string, x + j as u64, y + i as u64, blue, green, red, alpha);
+        
             ipv6s.push(ipv6);
         }
     }
-
     //shuffle ipv6s
     use rand::seq::SliceRandom;
     let mut rng = rand::thread_rng();
     ipv6s.shuffle(&mut rng);
-
-
-
-
-    // ping ipv6 addresses using icmpv6 just run no return expected
-
-    // let mut txv6 = create_tx();
-    // loop {
-    //     print_image(&ipv6s, &mut txv6);
-    // }
-
-    // calculate bandwidth for 1 run each packet is 16 bytes
-    let mut txv6 = create_tx();
-    let mut wait_time: f64 = 0.0;
-    loop {
-        println!("Sending image");
-        let size = ipv6s.len() * 16 * 160;
-        let current = std::time::Instant::now();
-        print_image(&ipv6s, &mut txv6);
-        let elapsed = current.elapsed().as_secs_f64();
-        let bandwidth = size as f64 / elapsed;
-        println!("Bandwidth: {} bps", bandwidth);
-        wait_time = size as f64 / bandwidth * 2.0;
-
-        println!("Waiting for {} seconds", wait_time);
-        std::thread::sleep(std::time::Duration::from_secs_f64(wait_time));
-    }
-
-
-    
-
+    Some(ipv6s)
 }
 
 fn print_image(ipv6s: &Vec<String>, txv6: &mut pnet::transport::TransportSender) {
