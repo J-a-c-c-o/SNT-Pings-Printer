@@ -15,24 +15,6 @@ This project is a simple yet powerful printer that sends IPv6 ping packets to th
 1. **Local Printer**: Prints an image from a local file.
 2. **Server Printer**: Prints an image fetched from a server.
 
-## Usage
-
-### Local Printer
-
-To use the local printer, run:
-
-```sh
-cargo run -- <image_path> <pos x> <pos y> <scale x> <scale y> <ipv6> <wait_time>
-```
-
-### Server Printer
-
-To use the server printer, run:
-
-```sh
-cargo run -- <wait time> <server>
-```
-
 ## Dependencies
 
 Ensure you have the following dependencies in your `Cargo.toml`:
@@ -115,6 +97,14 @@ cargo run -- <wait time> <server>
 ```
 
 Replace the placeholders with your specific parameters.
+
+##### Server URLS
+The following URLs needs to be supported:
+
+- `GET /sntpings/image`: Returns a random image from the server.
+- `GET /sntpings/size`: Return json with the size of the image. Example: `{"x": 1920, "y": 1080}`
+- `GET /sntpings/ipv6`: Return json with the ipv6 address of the server. Example: `{"ipv6": "2001:db8::1"}`
+- `GET /sntpings/location`: Return json with the position of the image. Example: `{"x": 0, "y": 0}`
 
 ## Troubleshooting
 
