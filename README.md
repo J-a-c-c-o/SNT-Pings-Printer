@@ -32,7 +32,7 @@ This project is licensed under the MIT License.
 
 ## Contributing
 
-We welcome contributions! If you have ideas to improve the project or find a bug, feel free to open an issue or submit a pull request.
+I welcome contributions! If you have ideas to improve the project or find a bug, feel free to open an issue or submit a pull request.
 
 ## Contact
 
@@ -114,11 +114,11 @@ If you encounter any issues, check the following:
 - Verify your IPv6 configuration.
 - Check the image path and server URL.
 
-For further assistance, open an issue on GitHub or join our community channels.
+For further assistance, open an issue on GitHub or contact me via Discord.
 
 ## Support
 
-If you need help, feel free to reach out via discord or open an issue on GitHub. We're here to help!
+If you need help, feel free to reach out via discord or open an issue on GitHub.
 
 
 Thank you for using snt-Pings Printer! Let's make some amazing art together!
