@@ -99,7 +99,7 @@ cargo run -- <wait time> <server>
 Replace the placeholders with your specific parameters.
 
 ##### Server URLS
-The following URLs needs to be supported:
+The following URLs needs to be supported by your server:
 
 - `GET /sntpings/image`: Returns a random image from the server.
 - `GET /sntpings/size`: Return json with the size of the image. Example: `{"x": 1920, "y": 1080}`
