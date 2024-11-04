@@ -5,10 +5,11 @@ use std::vec;
 use figlet_rs::FIGfont;
 pub use image::ImageReader;
 pub use image::imageops;
-use pnet::packet::icmpv6::MutableIcmpv6Packet;
 use pnet::packet::util;
 use pnet::packet::Packet;
 
+const MAX_X: u64 = 1920;
+const MAX_Y: u64 = 1080;
 
 fn main() {
     // read arguments
@@ -65,9 +66,6 @@ fn main() {
 }
 
 fn build_ipv6() -> Option<Vec<String>> {
-    // read image
-    // let image_path = &args[1];
-    // let img = image::open(image_path).unwrap().to_rgba8();
     // read image from server
     let img ;
 
@@ -83,6 +81,7 @@ fn build_ipv6() -> Option<Vec<String>> {
     
     }
 
+    // get image size
     let scale_x: u64;
     let scale_y: u64;
 
@@ -100,7 +99,10 @@ fn build_ipv6() -> Option<Vec<String>> {
     
     }
 
+    // resize image
     let img = imageops::resize(&img.unwrap(), scale_x as u32, scale_y as u32, image::imageops::FilterType::Nearest);
+    
+    // get image position
     let x: u64;
     let y: u64;
 
@@ -118,11 +120,8 @@ fn build_ipv6() -> Option<Vec<String>> {
     
     }
 
-    let max_x: u64 = 1920;
-    let max_y: u64 = 1080;
-
-    if x + img.width() as u64 > max_x || y + img.height() as u64 > max_y {
-        println!("Image is too big for the screen current size is {}x{} and image size is {}x{}", max_x, max_y, img.width(), img.height());
+    if x + img.width() as u64 > MAX_X || y + img.height() as u64 > MAX_Y {
+        println!("Image is too big for the screen current size is {}x{} and image size is {}x{}", MAX_X, MAX_Y, img.width(), img.height());
         return None;
     }
 
@@ -168,6 +167,7 @@ fn build_ipv6() -> Option<Vec<String>> {
             ipv6s.push(ipv6);
         }
     }
+
     //shuffle ipv6s
     use rand::seq::SliceRandom;
     let mut rng = rand::thread_rng();
@@ -195,20 +195,13 @@ fn sendecho(ipv6: String, txv6: &mut pnet::transport::TransportSender) {
 
     let mut echo_packet = pnet::packet::icmpv6::MutableIcmpv6Packet::new(&mut vec[..]).unwrap();
     echo_packet.set_icmpv6_type(pnet::packet::icmpv6::Icmpv6Types::EchoRequest);
-    let csum = ipv6_checksum(&echo_packet);
+    let csum = util::checksum(echo_packet.packet(),1);
     echo_packet.set_checksum(csum);
 
 
     let err = txv6.send_to(echo_packet, addr);
 
-    
-
     if err.is_err() {
         println!("Error sending packet: {}", err.err().unwrap());
     }
-}
-
-
-fn ipv6_checksum(packet: &MutableIcmpv6Packet) -> u16 {
-    util::checksum(packet.packet(),1)
 }
