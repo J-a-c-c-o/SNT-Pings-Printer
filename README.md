@@ -83,7 +83,7 @@ cargo build --release
 To print an image from a local file, use:
 
 ```sh
-cargo run -- <image_path> <pos x> <pos y> <scale x> <scale y> <ipv6> <wait_time>
+cargo run --release <image_path> <pos x> <pos y> <scale x> <scale y> <ipv6> <wait_time>
 ```
 
 Replace the placeholders with your specific parameters.
@@ -93,7 +93,7 @@ Replace the placeholders with your specific parameters.
 To print an image fetched from a server, use:
 
 ```sh
-cargo run -- <wait time> <server>
+cargo run --release <wait time> <server>
 ```
 
 Replace the placeholders with your specific parameters.
