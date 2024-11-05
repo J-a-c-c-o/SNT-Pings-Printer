@@ -44,14 +44,6 @@ To contact me, you can reach out via:
 
 Special thanks to the snt-Pings team and all contributors who made this project possible.
 
-## Screenshots
-
-Check out some amazing artworks created using the snt-Pings Printer:
-
-![Artwork 1](path/to/artwork1.png)
-![Artwork 2](path/to/artwork2.png)
-
-Let's create something awesome together!
 ## Getting Started
 
 ### Prerequisites
